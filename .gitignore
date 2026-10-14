@@ -1,0 +1,37 @@
+# Build, editor and local runtime artifacts
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+upstream/
+.dumps/
+.plan/
+.agents/
+.DS_Store
+
+# Authentication is stored outside this repository. Also ignore accidental copies.
+.env
+.env.*
+!.env.example
+.auth/
+auth/
+credentials/
+secrets/
+cookies.txt
+cookies*.txt
+ytdlp-cookie.txt
+browser.json
+oauth.json
+oauth*.json
+credentials*.json
+*token*.json
+*.pem
+*.key
+.auth-*
+.auth.lock
+*.db
+*.sqlite*

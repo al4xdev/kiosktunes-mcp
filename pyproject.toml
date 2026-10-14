@@ -1,0 +1,25 @@
+[project]
+name = "simp-mcp"
+version = "0.1.0"
+description = "Local TTY music control through MCP and mpv"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = ["mcp>=1.12,<2", "ytmusicapi>=1.11,<2", "yt-dlp[default]>=2025.1"]
+
+[project.scripts]
+simp-mcp = "rt_music.cli:main"
+rt-music = "rt_music.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rt_music"]
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.11"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
