@@ -80,7 +80,10 @@ class Player:
                     raise RuntimeError("Install mpv to play music in the terminal.")
                 ytdlp = Path(sys.executable).parent / "yt-dlp"
                 if not ytdlp.exists():
-                    raise RuntimeError("yt-dlp was not found; run uv sync.")
+                    found = shutil.which("yt-dlp")
+                    if not found:
+                        raise RuntimeError("yt-dlp was not found; run uv sync or install yt-dlp.")
+                    ytdlp = Path(found)
                 if self.socket_path.exists():
                     info = self.socket_path.lstat()
                     if not stat.S_ISSOCK(info.st_mode) or info.st_uid != os.getuid():
