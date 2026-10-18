@@ -95,10 +95,55 @@ def execute(args: argparse.Namespace):
     raise ValueError("Unknown music command.")
 
 
+def mcp_config_snippets() -> dict:
+    """Generate ready-to-paste MCP configurations for Claude Code, Cursor, OpenCode, and DSH."""
+    import os
+    from pathlib import Path
+    pkg_dir = str(Path(__file__).resolve().parent.parent.parent)
+    return {
+        "claude_code": f"claude mcp add music uv -- run --directory {pkg_dir} simp-mcp",
+        "mcp_json": {
+            "mcpServers": {
+                "music": {
+                    "command": "uv",
+                    "args": ["run", "--directory", pkg_dir, "simp-mcp"]
+                }
+            }
+        }
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
-    if not argv or argv == ["mcp"]:
+    if not argv:
         server.main()
+        return 0
+    if argv[0] == "mcp":
+        if len(argv) > 1 and argv[1] in {"--config", "config"}:
+            snippets = mcp_config_snippets()
+            print("=== Claude Code CLI ===")
+            print(snippets["claude_code"])
+            print("\n=== Claude / Cursor / Windsurf / DSH (.agents/mcp.json or ~/.dsh/mcp.json) ===")
+            print(json.dumps(snippets["mcp_json"], indent=2))
+            return 0
+        if len(argv) > 1 and argv[1] in {"--setup", "setup"}:
+            snippets = mcp_config_snippets()
+            agents_dir = Path(".agents")
+            agents_dir.mkdir(exist_ok=True)
+            mcp_file = agents_dir / "mcp.json"
+            with mcp_file.open("w", encoding="utf-8") as fp:
+                json.dump(snippets["mcp_json"], fp, indent=2)
+            print(f"✓ Wrote local MCP config to {mcp_file}")
+            print(f"✓ Claude Code CLI setup: {snippets['claude_code']}")
+            return 0
+        server.main()
+        return 0
+    if argv[0] == "history":
+        from rt_music.history import get_history
+        limit = 20
+        if len(argv) > 1 and argv[1].isdigit():
+            limit = int(argv[1])
+        print(json.dumps(get_history(limit), indent=2, ensure_ascii=False))
         return 0
     if argv[0] == "auth":
         return auth.main(argv[1:])

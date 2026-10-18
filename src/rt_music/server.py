@@ -15,7 +15,7 @@ player = Player()
 def music():
     auth = config_dir() / "browser.json"
     try:
-        return YTMusic(str(auth) if auth.is_file() else None, requests_timeout=20)
+        return YTMusic(str(auth) if auth.is_file() else None)
     except Exception:  # noqa: BLE001 -- invalid auth data must never appear in MCP errors
         raise RuntimeError("Local authentication configuration failed; reimport the cookies.") from None
 
@@ -220,6 +220,13 @@ def import_simpmusic_auth(force: bool = False, auth_user: int = 0) -> dict:
     music.cache_clear()
     result["note"] = "Catalog auth reloaded. Restart the player when convenient to reload playback cookies. No credentials returned."
     return result
+
+
+@mcp.tool()
+def get_listening_history(limit: int = 50) -> list:
+    """Retrieve the recent listening history log to understand user music taste and craft custom playlists."""
+    from rt_music.history import get_history
+    return get_history(limit=limit_value(limit))
 
 
 def main():

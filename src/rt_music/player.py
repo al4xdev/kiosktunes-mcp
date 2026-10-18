@@ -95,7 +95,9 @@ class Player:
                         else:
                             raise RuntimeError("The existing player is unresponsive; wait before retrying.")
                 args = [mpv, "--no-config", "--idle=yes", "--no-terminal", "--vid=no",
-                        "--audio-display=no", "--volume=70", "--ytdl-format=bestaudio/best",
+                        "--audio-display=no", "--volume=80",
+                        "--ytdl-format=bestaudio[acodec=opus]/bestaudio[acodec=m4a]/bestaudio/best",
+                        "--af=lavfi=[crystalizer=i=2.0],lavfi=[extrastereo=m=1.1]",
                         f"--script-opts=ytdl_hook-ytdl_path={ytdlp}",
                         f"--input-ipc-server={self.socket_path}"]
                 cookies = config_dir() / "cookies.txt"
@@ -148,11 +150,16 @@ class Player:
                            "current": item.get("current", False)})
         return result
 
-    def play(self, video_id, enqueue=False):
+    def play(self, video_id, enqueue=False, title=None, artists=None):
         url = video_url(video_id)
         self.ensure()
         self.command("loadfile", url, "append-play" if enqueue else "replace")
         if not enqueue:
             self.command("set_property", "pause", False)
+        try:
+            from rt_music.history import log_playback
+            log_playback(video_id, title=title, artists=artists, source="play_music")
+        except Exception:
+            pass
         return {"accepted": True, "video_id": video_id, "enqueued": enqueue,
                 "note": "Loading asynchronously; check playback_status to confirm audio playback."}
