@@ -55,7 +55,9 @@ def test_overwrite_requires_force(source: Path, tmp_path: Path) -> None:
         import_simpmusic(source, directory=directory)
     assert before == (directory / "browser.json").read_bytes()
     import_simpmusic(source, directory=directory, force=True, auth_user=2)
-    assert json.loads((directory / "browser.json").read_text())["x-goog-authuser"] == "2"
+    assert (
+        json.loads((directory / "browser.json").read_text())["x-goog-authuser"] == "2"
+    )
     assert not list(directory.glob(".auth-*"))
 
 
@@ -86,12 +88,15 @@ def test_reject_symlinks(source: Path, tmp_path: Path) -> None:
         import_simpmusic(source, directory=directory_link, force=True)
 
 
-@pytest.mark.parametrize("row", [
-    "malformed-row",
-    ".youtube.com\tTRUE\t/\tTRUE\t0\tSID\tfake; injected",
-    ".youtube.com\tTRUE\t/\tTRUE\t0\tBAD NAME\tfake",
-    ".youtube.com\tTRUE\t/\tTRUE\t-1\tSID\tfake",
-])
+@pytest.mark.parametrize(
+    "row",
+    [
+        "malformed-row",
+        ".youtube.com\tTRUE\t/\tTRUE\t0\tSID\tfake; injected",
+        ".youtube.com\tTRUE\t/\tTRUE\t0\tBAD NAME\tfake",
+        ".youtube.com\tTRUE\t/\tTRUE\t-1\tSID\tfake",
+    ],
+)
 def test_malformed_errors_do_not_echo_input(tmp_path: Path, row: str) -> None:
     source = tmp_path / "source.txt"
     source.write_text("# Netscape HTTP Cookie File\n" + row)
@@ -103,7 +108,9 @@ def test_malformed_errors_do_not_echo_input(tmp_path: Path, row: str) -> None:
 
 def test_missing_signing_cookie_writes_nothing(tmp_path: Path) -> None:
     source = tmp_path / "source.txt"
-    source.write_text("# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t0\tSID\tfake")
+    source.write_text(
+        "# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t0\tSID\tfake"
+    )
     directory = tmp_path / "rt-music"
     with pytest.raises(AuthError, match="__Secure-3PAPISID"):
         import_simpmusic(source, directory=directory)

@@ -11,17 +11,42 @@ from rt_music.player import VIDEO_ID
 
 
 def music_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="simp-mcp music", description="Control your local persistent music player.")
+    parser = argparse.ArgumentParser(
+        prog="simp-mcp music", description="Control your local persistent music player."
+    )
     commands = parser.add_subparsers(dest="command")
-    play = commands.add_parser("play", help="Search and play a song; with no query, resume playback")
+    play = commands.add_parser(
+        "play", help="Search and play a song; with no query, resume playback"
+    )
     play.add_argument("query", nargs="*", help="Search query or a video ID")
     play.add_argument("--id", dest="video_id", help="Use an exact YouTube video ID")
-    play.add_argument("--enqueue", action="store_true", help="Append without interrupting the current song")
+    play.add_argument(
+        "--enqueue",
+        action="store_true",
+        help="Append without interrupting the current song",
+    )
     search = commands.add_parser("search", help="Search without starting playback")
     search.add_argument("query", nargs="+")
     search.add_argument("--limit", type=int, default=10)
-    search.add_argument("--filter", choices=["songs", "videos", "albums", "artists", "playlists"], default="songs")
-    for name in ("pause", "resume", "stop", "next", "last", "previous", "shuffle", "clear", "status", "queue", "shutdown", "help"):
+    search.add_argument(
+        "--filter",
+        choices=["songs", "videos", "albums", "artists", "playlists"],
+        default="songs",
+    )
+    for name in (
+        "pause",
+        "resume",
+        "stop",
+        "next",
+        "last",
+        "previous",
+        "shuffle",
+        "clear",
+        "status",
+        "queue",
+        "shutdown",
+        "help",
+    ):
         commands.add_parser(name)
     volume = commands.add_parser("volume", help="Set volume from 0 to 100")
     volume.add_argument("value", type=float)
@@ -37,7 +62,9 @@ def music_parser() -> argparse.ArgumentParser:
     edit.add_argument("action", choices=["remove", "move", "select"])
     edit.add_argument("index", type=int)
     edit.add_argument("--destination", type=int, default=0)
-    authentication = commands.add_parser("auth", help="Local auth metadata or fixed-source SimpMusic import; no secrets")
+    authentication = commands.add_parser(
+        "auth", help="Local auth metadata or fixed-source SimpMusic import; no secrets"
+    )
     authentication.add_argument("action", choices=["status", "import-simpmusic"])
     authentication.add_argument("--force", action="store_true")
     authentication.add_argument("--auth-user", type=int, default=0)
@@ -60,7 +87,14 @@ def execute(args: argparse.Namespace):
             video_id = query
         if video_id is None:
             results = server.search_music(query, limit=10)
-            selected = next((item for item in results if VIDEO_ID.fullmatch(item.get("videoId") or "")), None)
+            selected = next(
+                (
+                    item
+                    for item in results
+                    if VIDEO_ID.fullmatch(item.get("videoId") or "")
+                ),
+                None,
+            )
             if selected is None:
                 raise ValueError("No playable songs found. Try a more specific query.")
             video_id = selected["videoId"]
@@ -69,9 +103,22 @@ def execute(args: argparse.Namespace):
             result["selected_title"] = selected.get("title")
         return result
     if command == "search":
-        return server.search_music(" ".join(args.query), filter=args.filter, limit=args.limit)
-    if command in {"pause", "resume", "stop", "next", "previous", "last", "shuffle", "clear"}:
-        return server.control_playback({"last": "previous", "clear": "clear_queue"}.get(command, command))
+        return server.search_music(
+            " ".join(args.query), filter=args.filter, limit=args.limit
+        )
+    if command in {
+        "pause",
+        "resume",
+        "stop",
+        "next",
+        "previous",
+        "last",
+        "shuffle",
+        "clear",
+    }:
+        return server.control_playback(
+            {"last": "previous", "clear": "clear_queue"}.get(command, command)
+        )
     if command == "status":
         return server.playback_status()
     if command == "queue":
@@ -97,8 +144,8 @@ def execute(args: argparse.Namespace):
 
 def mcp_config_snippets() -> dict:
     """Generate ready-to-paste MCP configurations for Claude Code, Cursor, OpenCode, and DSH."""
-    import os
     from pathlib import Path
+
     pkg_dir = str(Path(__file__).resolve().parent.parent.parent)
     return {
         "claude_code": f"claude mcp add music uv -- run --directory {pkg_dir} simp-mcp",
@@ -106,10 +153,10 @@ def mcp_config_snippets() -> dict:
             "mcpServers": {
                 "music": {
                     "command": "uv",
-                    "args": ["run", "--directory", pkg_dir, "simp-mcp"]
+                    "args": ["run", "--directory", pkg_dir, "simp-mcp"],
                 }
             }
-        }
+        },
     }
 
 
@@ -123,11 +170,15 @@ def main(argv: list[str] | None = None) -> int:
             snippets = mcp_config_snippets()
             print("=== Claude Code CLI ===")
             print(snippets["claude_code"])
-            print("\n=== Claude / Cursor / Windsurf / DSH (.agents/mcp.json or ~/.dsh/mcp.json) ===")
+            print(
+                "\n=== Claude / Cursor / Windsurf / DSH (.agents/mcp.json or ~/.dsh/mcp.json) ==="
+            )
             print(json.dumps(snippets["mcp_json"], indent=2))
             return 0
         if len(argv) > 1 and argv[1] in {"--setup", "setup"}:
             snippets = mcp_config_snippets()
+            from pathlib import Path
+
             agents_dir = Path(".agents")
             agents_dir.mkdir(exist_ok=True)
             mcp_file = agents_dir / "mcp.json"
@@ -140,6 +191,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if argv[0] == "history":
         from rt_music.history import get_history
+
         limit = 20
         if len(argv) > 1 and argv[1].isdigit():
             limit = int(argv[1])
@@ -148,7 +200,9 @@ def main(argv: list[str] | None = None) -> int:
     if argv[0] == "auth":
         return auth.main(argv[1:])
     if argv[0] in {"-h", "--help", "help"}:
-        print("Usage: simp-mcp [mcp | music COMMAND | auth COMMAND]\nNo arguments starts the MCP stdio server.\nUse simp-mcp music --help for direct controls.")
+        print(
+            "Usage: simp-mcp [mcp | music COMMAND | auth COMMAND]\nNo arguments starts the MCP stdio server.\nUse simp-mcp music --help for direct controls."
+        )
         return 0
     if argv[0] != "music":
         print("Unknown mode. Use simp-mcp --help.", file=sys.stderr)
@@ -164,7 +218,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Music error: {error}", file=sys.stderr)
         return 1
     except Exception:  # noqa: BLE001 -- keep unexpected third-party errors out of chat/terminal output
-        print("Music command failed. Check the player, network and local configuration.", file=sys.stderr)
+        print(
+            "Music command failed. Check the player, network and local configuration.",
+            file=sys.stderr,
+        )
         return 1
     print(json.dumps(result, indent=2, ensure_ascii=False, allow_nan=False))
     return 0

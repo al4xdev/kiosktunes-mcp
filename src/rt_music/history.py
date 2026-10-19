@@ -1,4 +1,5 @@
 """Persistent listening history logger for AI agents to craft personalized playlists."""
+
 from __future__ import annotations
 
 import json
@@ -24,7 +25,12 @@ def history_file() -> Path:
     return history_dir() / "history.jsonl"
 
 
-def log_playback(video_id: str, title: str | None = None, artists: list[str] | None = None, source: str = "play_music") -> dict:
+def log_playback(
+    video_id: str,
+    title: str | None = None,
+    artists: list[str] | None = None,
+    source: str = "play_music",
+) -> dict:
     """Append a listening record to the JSON lines log."""
     entry = {
         "timestamp": int(time.time()),

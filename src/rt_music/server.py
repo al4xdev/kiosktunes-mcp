@@ -1,4 +1,5 @@
 """MCP stdio entry point. Diagnostics never share cookies or stream URLs."""
+
 import math
 from functools import lru_cache
 
@@ -7,7 +8,10 @@ from ytmusicapi import YTMusic
 
 from rt_music.player import Player, config_dir
 
-mcp = FastMCP("simp-mcp", instructions="Search for a videoId before playing. play_music loads asynchronously; confirm playback_status. Playback persists between chats. Do not promise premium quality. Authentication tools return metadata only, never credentials.")
+mcp = FastMCP(
+    "simp-mcp",
+    instructions="Search for a videoId before playing. play_music loads asynchronously; confirm playback_status. Playback persists between chats. Do not promise premium quality. Authentication tools return metadata only, never credentials.",
+)
 player = Player()
 
 
@@ -17,7 +21,9 @@ def music():
     try:
         return YTMusic(str(auth) if auth.is_file() else None)
     except Exception:  # noqa: BLE001 -- invalid auth data must never appear in MCP errors
-        raise RuntimeError("Local authentication configuration failed; reimport the cookies.") from None
+        raise RuntimeError(
+            "Local authentication configuration failed; reimport the cookies."
+        ) from None
 
 
 def remote(call, *args, **kwargs):
@@ -25,7 +31,9 @@ def remote(call, *args, **kwargs):
         return call(*args, **kwargs)
     except Exception:  # noqa: BLE001 -- sanitize all third-party diagnostics at credential boundary
         # Upstream errors may embed cookies, headers or signed URLs.
-        raise RuntimeError("YouTube Music is unavailable or authentication is invalid. Check your network and local configuration.") from None
+        raise RuntimeError(
+            "YouTube Music is unavailable or authentication is invalid. Check your network and local configuration."
+        ) from None
 
 
 def limit_value(limit):
@@ -41,7 +49,9 @@ def search_music(query: str, filter: str = "songs", limit: int = 10) -> list:
         raise ValueError("query must contain 1 to 500 characters.")
     if filter not in {"songs", "videos", "albums", "artists", "playlists"}:
         raise ValueError("filter: songs, videos, albums, artists or playlists.")
-    return remote(music().search, query, filter=filter, limit=limit_value(limit))[:limit]
+    return remote(music().search, query, filter=filter, limit=limit_value(limit))[
+        :limit
+    ]
 
 
 @mcp.tool()
@@ -76,8 +86,11 @@ def get_library_playlists(limit: int = 25) -> list:
 def get_radio(video_id: str, limit: int = 25) -> dict:
     """Get radio recommendations for a song without changing the queue."""
     from rt_music.player import video_url
+
     video_url(video_id)
-    return remote(music().get_watch_playlist, videoId=video_id, limit=limit_value(limit))
+    return remote(
+        music().get_watch_playlist, videoId=video_id, limit=limit_value(limit)
+    )
 
 
 @mcp.tool()
@@ -101,12 +114,19 @@ def get_queue() -> list:
 @mcp.tool()
 def control_playback(action: str) -> dict:
     """Control pause, resume, stop, next, previous, shuffle or clear_queue."""
-    commands = {"pause": ("set_property", "pause", True),
-                "resume": ("set_property", "pause", False), "stop": ("stop",),
-                "next": ("playlist-next", "weak"), "previous": ("playlist-prev", "weak"),
-                "shuffle": ("playlist-shuffle",), "clear_queue": ("playlist-clear",)}
+    commands = {
+        "pause": ("set_property", "pause", True),
+        "resume": ("set_property", "pause", False),
+        "stop": ("stop",),
+        "next": ("playlist-next", "weak"),
+        "previous": ("playlist-prev", "weak"),
+        "shuffle": ("playlist-shuffle",),
+        "clear_queue": ("playlist-clear",),
+    }
     if action not in commands:
-        raise ValueError("action: pause, resume, stop, next, previous, shuffle or clear_queue.")
+        raise ValueError(
+            "action: pause, resume, stop, next, previous, shuffle or clear_queue."
+        )
     if not player.available():
         return {"running": False, "note": "Use play_music first."}
     if action == "clear_queue":
@@ -156,9 +176,12 @@ def edit_queue(action: str, index: int, destination: int = 0) -> list:
 def enqueue_playlist(playlist_id: str, limit: int = 50) -> dict:
     """Enqueue up to 100 playlist tracks, skipping entries without a valid videoId."""
     from rt_music.player import VIDEO_ID
+
     playlist = get_playlist(playlist_id, limit)
     ids = [track.get("videoId") for track in playlist.get("tracks", [])]
-    ids = [item for item in ids if isinstance(item, str) and VIDEO_ID.fullmatch(item)][:limit_value(limit)]
+    ids = [item for item in ids if isinstance(item, str) and VIDEO_ID.fullmatch(item)][
+        : limit_value(limit)
+    ]
     for video_id in ids:
         player.play(video_id, enqueue=True)
     return {"enqueued": len(ids), "queue": player.queue()}
@@ -196,12 +219,16 @@ def shutdown_player() -> dict:
 def auth_status() -> dict:
     """Report local auth file presence and permissions, never cookie/token values. Not a remote login check."""
     from rt_music.auth import AuthError, status
+
     try:
         result = status()
     except (AuthError, OSError):
-        raise RuntimeError("Cannot inspect local authentication configuration safely.") from None
-    result["configured"] = all(result[name].get("private", False)
-                               for name in ("cookies.txt", "browser.json"))
+        raise RuntimeError(
+            "Cannot inspect local authentication configuration safely."
+        ) from None
+    result["configured"] = all(
+        result[name].get("private", False) for name in ("cookies.txt", "browser.json")
+    )
     return result
 
 
@@ -209,6 +236,7 @@ def auth_status() -> dict:
 def import_simpmusic_auth(force: bool = False, auth_user: int = 0) -> dict:
     """Explicitly import the local SimpMusic YouTube session. Fixed source, metadata only; force replaces existing files."""
     from rt_music.auth import AuthError, import_simpmusic
+
     if not 0 <= auth_user <= 100:
         raise ValueError("auth_user must be an account index between 0 and 100.")
     try:
@@ -218,7 +246,9 @@ def import_simpmusic_auth(force: bool = False, auth_user: int = 0) -> dict:
     except OSError:
         raise RuntimeError("Local authentication import failed safely.") from None
     music.cache_clear()
-    result["note"] = "Catalog auth reloaded. Restart the player when convenient to reload playback cookies. No credentials returned."
+    result["note"] = (
+        "Catalog auth reloaded. Restart the player when convenient to reload playback cookies. No credentials returned."
+    )
     return result
 
 
@@ -226,6 +256,7 @@ def import_simpmusic_auth(force: bool = False, auth_user: int = 0) -> dict:
 def get_listening_history(limit: int = 50) -> list:
     """Retrieve the recent listening history log to understand user music taste and craft custom playlists."""
     from rt_music.history import get_history
+
     return get_history(limit=limit_value(limit))
 
 

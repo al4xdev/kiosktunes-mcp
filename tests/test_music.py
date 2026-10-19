@@ -58,6 +58,7 @@ def test_private_runtime(tmp_path):
 def test_remote_error_is_sanitized():
     def fail():
         raise RuntimeError("cookie=secret signed_url=private")
+
     with pytest.raises(RuntimeError) as error:
         server.remote(fail)
     assert "secret" not in str(error.value)
@@ -70,8 +71,14 @@ def test_play_validates_before_start(tmp_path):
 
 def test_enqueue_respects_hard_limit(monkeypatch):
     calls = []
-    monkeypatch.setattr(server, "get_playlist", lambda *args: {"tracks": [{"videoId": "dQw4w9WgXcQ"}] * 150})
-    monkeypatch.setattr(server.player, "play", lambda *args, **kwargs: calls.append(args[0]))
+    monkeypatch.setattr(
+        server,
+        "get_playlist",
+        lambda *args: {"tracks": [{"videoId": "dQw4w9WgXcQ"}] * 150},
+    )
+    monkeypatch.setattr(
+        server.player, "play", lambda *args, **kwargs: calls.append(args[0])
+    )
     monkeypatch.setattr(server.player, "queue", list)
     assert server.enqueue_playlist("test", limit=1)["enqueued"] == 1
     assert len(calls) == 1
@@ -80,7 +87,9 @@ def test_enqueue_respects_hard_limit(monkeypatch):
 def test_queue_does_not_leak_signed_urls(monkeypatch, tmp_path):
     player = Player(tmp_path)
     monkeypatch.setattr(player, "available", lambda: True)
-    monkeypatch.setattr(player, "get", lambda *args: [{"filename": "https://host/private?token=secret"}])
+    monkeypatch.setattr(
+        player, "get", lambda *args: [{"filename": "https://host/private?token=secret"}]
+    )
     queue = player.queue()
     assert queue[0]["video_id"] is None
     assert "secret" not in str(queue)
@@ -115,13 +124,20 @@ def test_startup_failure_reaps_process(monkeypatch, tmp_path):
     calls = []
 
     class FailedProcess:
-        def poll(self): return 1
-        def terminate(self): calls.append("terminate")
-        def wait(self, **kwargs): calls.append("wait")
+        def poll(self):
+            return 1
+
+        def terminate(self):
+            calls.append("terminate")
+
+        def wait(self, **kwargs):
+            calls.append("wait")
 
     monkeypatch.setattr(player, "available", lambda: False)
     monkeypatch.setattr("rt_music.player.shutil.which", lambda _: "/usr/bin/mpv")
-    monkeypatch.setattr("rt_music.player.subprocess.Popen", lambda *args, **kwargs: FailedProcess())
+    monkeypatch.setattr(
+        "rt_music.player.subprocess.Popen", lambda *args, **kwargs: FailedProcess()
+    )
     with pytest.raises(RuntimeError, match="terminated"):
         player.ensure()
     assert calls == ["terminate", "wait"]

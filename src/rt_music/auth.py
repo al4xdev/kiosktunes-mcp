@@ -42,8 +42,17 @@ class Cookie:
 
     def netscape(self) -> str:
         domain = ("#HttpOnly_" if self.http_only else "") + self.domain
-        return "\t".join((domain, self.subdomains, self.path, self.secure,
-                          str(self.expires), self.name, self.value))
+        return "\t".join(
+            (
+                domain,
+                self.subdomains,
+                self.path,
+                self.secure,
+                str(self.expires),
+                self.name,
+                self.value,
+            )
+        )
 
 
 def _read_source(source: Path) -> str:
@@ -65,34 +74,44 @@ def read_cookies(source: Path, *, now: int | None = None) -> list[Cookie]:
     """Keep only unexpired cookies that apply to music.youtube.com."""
     now = int(time.time()) if now is None else now
     text = _read_source(source)
-    if not any(line.startswith("# Netscape HTTP Cookie File") for line in text.splitlines()):
+    if not any(
+        line.startswith("# Netscape HTTP Cookie File") for line in text.splitlines()
+    ):
         raise AuthError("Expected a Netscape HTTP Cookie File")
     cookies = []
     for line in text.splitlines():
         http_only = line.startswith("#HttpOnly_")
         if http_only:
-            line = line[len("#HttpOnly_"):]
+            line = line[len("#HttpOnly_") :]
         elif not line or line.startswith("#"):
             continue
         parts = line.split("\t")
         if len(parts) != 7:
             raise AuthError("Malformed Netscape cookie row")
         domain, subdomains, path, secure, expiry, name, value = parts
-        if (subdomains not in {"TRUE", "FALSE"} or secure not in {"TRUE", "FALSE"}
-                or not expiry.isdecimal() or not path.startswith("/")
-                or not re.fullmatch(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+", name)
-                or any(ord(char) < 32 or ord(char) >= 127 for char in value)
-                or any(char in value for char in ';"\\')):
+        if (
+            subdomains not in {"TRUE", "FALSE"}
+            or secure not in {"TRUE", "FALSE"}
+            or not expiry.isdecimal()
+            or not path.startswith("/")
+            or not re.fullmatch(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+", name)
+            or any(ord(char) < 32 or ord(char) >= 127 for char in value)
+            or any(char in value for char in ';"\\')
+        ):
             raise AuthError("Invalid Netscape cookie fields")
         host = domain.lstrip(".").lower()
         # Google-wide cookies are intentionally excluded even though they may
         # authenticate the same account. Never harvest a browser profile.
         applies = host == "music.youtube.com" or (
-            host == "youtube.com" and subdomains == "TRUE")
+            host == "youtube.com" and subdomains == "TRUE"
+        )
         expires = int(expiry)
         if applies and (expires == 0 or expires > now):
-            cookies.append(Cookie(domain, subdomains, path, secure, expires,
-                                  name, value, http_only))
+            cookies.append(
+                Cookie(
+                    domain, subdomains, path, secure, expires, name, value, http_only
+                )
+            )
     if not cookies:
         raise AuthError("No unexpired YouTube Music cookies found")
     return cookies
@@ -110,14 +129,18 @@ def _browser_headers(cookies: list[Cookie], auth_user: int) -> dict[str, str]:
             selected[cookie.name] = cookie
     sapisid = selected.get("__Secure-3PAPISID")
     if sapisid is None or not sapisid.value or sapisid.secure != "TRUE":
-        raise AuthError("Missing secure __Secure-3PAPISID; browser authentication unavailable")
+        raise AuthError(
+            "Missing secure __Secure-3PAPISID; browser authentication unavailable"
+        )
     stamp = str(int(time.time()))
     digest = hashlib.sha1(f"{stamp} {sapisid.value} {ORIGIN}".encode()).hexdigest()
     # ytmusicapi detects browser mode from SAPISIDHASH, then refreshes this
     # timestamped header on each request using the cookie and origin.
     return {
-        "accept": "*/*", "content-type": "application/json",
-        "origin": ORIGIN, "x-origin": ORIGIN,
+        "accept": "*/*",
+        "content-type": "application/json",
+        "origin": ORIGIN,
+        "x-origin": ORIGIN,
         "x-goog-authuser": str(auth_user),
         "authorization": f"SAPISIDHASH {stamp}_{digest}",
         "cookie": "; ".join(f"{item.name}={item.value}" for item in selected.values()),
@@ -136,14 +159,21 @@ def _private_directory(directory: Path) -> int:
     return fd
 
 
-def import_simpmusic(source: Path | None = None, *, force: bool = False,
-                     auth_user: int = 0, directory: Path | None = None) -> dict[str, object]:
+def import_simpmusic(
+    source: Path | None = None,
+    *,
+    force: bool = False,
+    auth_user: int = 0,
+    directory: Path | None = None,
+) -> dict[str, object]:
     """Write two mode-600 files; only this explicitly called API imports secrets."""
     source = source or Path.home() / ".simpmusic" / "ytdlp-cookie.txt"
     cookies = read_cookies(source)
     headers = _browser_headers(cookies, auth_user)
     payloads = {
-        "cookies.txt": "# Netscape HTTP Cookie File\n" + "\n".join(c.netscape() for c in cookies) + "\n",
+        "cookies.txt": "# Netscape HTTP Cookie File\n"
+        + "\n".join(c.netscape() for c in cookies)
+        + "\n",
         "browser.json": json.dumps(headers, indent=2) + "\n",
     }
     directory = directory or config_dir()
@@ -151,8 +181,9 @@ def import_simpmusic(source: Path | None = None, *, force: bool = False,
     try:
         fd = _private_directory(directory)
         try:
-            lock = os.open(".auth.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW,
-                           0o600, dir_fd=fd)
+            lock = os.open(
+                ".auth.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600, dir_fd=fd
+            )
             with os.fdopen(lock, "rb") as stream:
                 if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
                     raise AuthError("Unsafe auth lock file")
@@ -166,11 +197,17 @@ def import_simpmusic(source: Path | None = None, *, force: bool = False,
                     if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid():
                         raise AuthError("Refusing an unsafe credential destination")
                     if not force:
-                        raise AuthError("Credentials already exist; use --force to replace them")
+                        raise AuthError(
+                            "Credentials already exist; use --force to replace them"
+                        )
                 for name, content in payloads.items():
                     temp = ".auth-" + secrets.token_hex(16)
-                    out = os.open(temp, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW,
-                                  0o600, dir_fd=fd)
+                    out = os.open(
+                        temp,
+                        os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW,
+                        0o600,
+                        dir_fd=fd,
+                    )
                     temporary.append(temp)
                     with os.fdopen(out, "w", encoding="utf-8") as target:
                         os.fchmod(target.fileno(), 0o600)
@@ -182,8 +219,13 @@ def import_simpmusic(source: Path | None = None, *, force: bool = False,
                     else:
                         # Hard-link publication also prevents an uncooperative
                         # writer from causing accidental credential replacement.
-                        os.link(temp, name, src_dir_fd=fd, dst_dir_fd=fd,
-                                follow_symlinks=False)
+                        os.link(
+                            temp,
+                            name,
+                            src_dir_fd=fd,
+                            dst_dir_fd=fd,
+                            follow_symlinks=False,
+                        )
                         os.unlink(temp, dir_fd=fd)
                     temporary.remove(temp)
                 os.fsync(fd)
@@ -192,8 +234,14 @@ def import_simpmusic(source: Path | None = None, *, force: bool = False,
                 os.unlink(temp, dir_fd=fd)
             os.close(fd)
     except OSError:
-        raise AuthError("Cannot safely store credentials; check config files and permissions") from None
-    return {"directory": str(directory), "files": list(payloads), "cookie_count": len(cookies)}
+        raise AuthError(
+            "Cannot safely store credentials; check config files and permissions"
+        ) from None
+    return {
+        "directory": str(directory),
+        "files": list(payloads),
+        "cookie_count": len(cookies),
+    }
 
 
 def status(directory: Path | None = None) -> dict[str, object]:
@@ -204,9 +252,12 @@ def status(directory: Path | None = None) -> dict[str, object]:
         path = directory / name
         try:
             info = path.lstat()
-            result[name] = {"exists": True, "private": stat.S_ISREG(info.st_mode)
-                            and info.st_uid == os.getuid()
-                            and stat.S_IMODE(info.st_mode) == 0o600}
+            result[name] = {
+                "exists": True,
+                "private": stat.S_ISREG(info.st_mode)
+                and info.st_uid == os.getuid()
+                and stat.S_IMODE(info.st_mode) == 0o600,
+            }
         except FileNotFoundError:
             result[name] = {"exists": False}
     return result
@@ -218,11 +269,18 @@ def main(argv: list[str] | None = None) -> int:
     commands.add_parser("status", help="Show credential file metadata only")
     for command in ("inspect-simpmusic", "import-simpmusic"):
         sub = commands.add_parser(command)
-        sub.add_argument("--source", type=Path,
-                         default=Path.home() / ".simpmusic" / "ytdlp-cookie.txt")
+        sub.add_argument(
+            "--source",
+            type=Path,
+            default=Path.home() / ".simpmusic" / "ytdlp-cookie.txt",
+        )
         sub.add_argument("--auth-user", type=int, default=0)
         if command == "import-simpmusic":
-            sub.add_argument("--force", action="store_true", help="Explicitly replace existing credentials")
+            sub.add_argument(
+                "--force",
+                action="store_true",
+                help="Explicitly replace existing credentials",
+            )
     args = parser.parse_args(argv)
     try:
         if args.command == "status":
@@ -230,10 +288,16 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "inspect-simpmusic":
             cookies = read_cookies(args.source)
             _browser_headers(cookies, args.auth_user)
-            result = {"source": str(args.source), "cookie_count": len(cookies),
-                      "browser_auth_feasible": True, "credentials_written": False}
+            result = {
+                "source": str(args.source),
+                "cookie_count": len(cookies),
+                "browser_auth_feasible": True,
+                "credentials_written": False,
+            }
         else:
-            result = import_simpmusic(args.source, force=args.force, auth_user=args.auth_user)
+            result = import_simpmusic(
+                args.source, force=args.force, auth_user=args.auth_user
+            )
         print(json.dumps(result, indent=2))
         return 0
     except AuthError as error:
