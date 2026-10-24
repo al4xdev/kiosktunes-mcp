@@ -3,6 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-brightgreen.svg)](https://www.python.org/)
 [![MCP Ready](https://img.shields.io/badge/MCP-Compatible-purple.svg)](https://modelcontextprotocol.io/)
+[![al4xdev/kiosktunes-mcp MCP server](https://glama.ai/mcp/servers/al4xdev/kiosktunes-mcp/badges/score.svg)](https://glama.ai/mcp/servers/al4xdev/kiosktunes-mcp)
 
 A standalone, zero-bloat music server and **Model Context Protocol (MCP)** tool suite designed for developers, autonomous AI agents, and TTY/terminal power users. 
 
