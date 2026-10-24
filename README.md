@@ -108,6 +108,14 @@ Or write turnkey configuration into your current project:
 uv run simp-mcp mcp --setup
 ```
 
+### Community Registries & 1-Click Install
+
+* **[Glama.ai](https://glama.ai/mcp/servers/al4xdev/kiosktunes-mcp):** View verified server health, tool schemas, and connect directly.
+* **Smithery CLI:** Install directly into your client of choice without manual configuration:
+  ```bash
+  npx -y @smithery/cli install @al4xdev/kiosktunes-mcp --client claude
+  ```
+
 ### Manual Configuration Snippets
 
 #### 1. Claude Code CLI
