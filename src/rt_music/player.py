@@ -33,7 +33,14 @@ def config_dir() -> Path:
 class Player:
     def __init__(self, runtime: Path | None = None):
         base = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp"))
-        self.runtime = runtime or base / f"rt-music-{os.getuid()}"
+        legacy = base / f"rt-music-{os.getuid()}"
+        primary = base / f"kiosktunes-{os.getuid()}"
+        if runtime:
+            self.runtime = runtime
+        elif legacy.exists() and not primary.exists():
+            self.runtime = legacy
+        else:
+            self.runtime = primary
         self.socket_path = self.runtime / "mpv.sock"
 
     def prepare(self):

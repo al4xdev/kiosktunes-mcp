@@ -12,7 +12,8 @@ from rt_music.player import VIDEO_ID
 
 def music_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="simp-mcp music", description="Control your local persistent music player."
+        prog="kiosktunes-mcp music",
+        description="Control your local persistent music player.",
     )
     commands = parser.add_subparsers(dest="command")
     play = commands.add_parser(
@@ -163,12 +164,12 @@ def mcp_config_snippets() -> dict:
 
     pkg_dir = str(Path(__file__).resolve().parent.parent.parent)
     return {
-        "claude_code": f"claude mcp add music uv -- run --directory {pkg_dir} simp-mcp",
+        "claude_code": f"claude mcp add music uv -- run --directory {pkg_dir} kiosktunes-mcp",
         "mcp_json": {
             "mcpServers": {
                 "music": {
                     "command": "uv",
-                    "args": ["run", "--directory", pkg_dir, "simp-mcp"],
+                    "args": ["run", "--directory", pkg_dir, "kiosktunes-mcp"],
                 }
             }
         },
@@ -216,11 +217,11 @@ def main(argv: list[str] | None = None) -> int:
         return auth.main(argv[1:])
     if argv[0] in {"-h", "--help", "help"}:
         print(
-            "Usage: simp-mcp [mcp | music COMMAND | auth COMMAND]\nNo arguments starts the MCP stdio server.\nUse simp-mcp music --help for direct controls."
+            "Usage: kiosktunes-mcp [mcp | music COMMAND | auth COMMAND]\nNo arguments starts the MCP stdio server.\nUse kiosktunes-mcp music --help for direct controls."
         )
         return 0
     if argv[0] != "music":
-        print("Unknown mode. Use simp-mcp --help.", file=sys.stderr)
+        print("Unknown mode. Use kiosktunes-mcp --help.", file=sys.stderr)
         return 2
     parser = music_parser()
     args = parser.parse_args(argv[1:])

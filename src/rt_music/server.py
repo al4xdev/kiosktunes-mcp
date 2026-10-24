@@ -12,7 +12,7 @@ from ytmusicapi import YTMusic
 from rt_music.player import Player, config_dir
 
 mcp = FastMCP(
-    "simp-mcp",
+    "kiosktunes-mcp",
     instructions="Search for a videoId before playing. play_music enqueues by default and accepts single or multiple videoIds; confirm playback_status. Playback persists between chats. Do not promise premium quality. Authentication tools return metadata only, never credentials.",
 )
 player = Player()

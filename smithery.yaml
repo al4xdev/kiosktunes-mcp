@@ -9,6 +9,6 @@ startCommand:
     (config) => {
       return {
         command: "uv",
-        args: ["run", "simp-mcp"]
+        args: ["run", "kiosktunes-mcp"]
       };
     }

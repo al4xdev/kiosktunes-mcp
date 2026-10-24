@@ -21,7 +21,7 @@ When working in low-resource environments (e.g., pure TTY sessions, heavy build/
 
 ### The Solution:
 - **Detached Daemon Architecture:** A dedicated `mpv` instance runs in background with a Unix IPC socket (`mpv.sock`). Closing the agent, disconnecting chats, or switching TTYs **never interrupts playback**.
-- **Real-Time DSP Hardware Enhancement (Zero VRAM):** Rather than slow, heavy AI upscaling (AudioSR) that consumes gigabytes of VRAM, `simp_mcp` leverages native real-time DSP filters (`crystalizer` for transient attack/air recovery and `extrastereo` for spatial headstage expansion).
+- **Real-Time DSP Hardware Enhancement (Zero VRAM):** Rather than slow, heavy AI upscaling (AudioSR) that consumes gigabytes of VRAM, `kiosktunes-mcp` leverages native real-time DSP filters (`crystalizer` for transient attack/air recovery and `extrastereo` for spatial headstage expansion).
 - **Persistent Agent Memory & User Taste Profiling:** Every track played is logged to structured `JSONL` format. Users and agents can classify and rate songs on a 0–5 star scale (`rate_music`, `get_user_ratings`) to curate personalized playlists and discover new music based on verified favorites.
 - **Compact & Batch-First for LLMs:** High-leverage, polymorphic tools accept single items or lists. Search runs multi-query lookups concurrently, playback defaults to non-interrupting `enqueue=True`, and pruned compact metadata cuts LLM context token usage by over 80%.
 - **Lazy Turnkey MCP:** Instant startup with zero background overhead until an audio command is actually dispatched.
@@ -70,42 +70,42 @@ uv sync
 
 ```bash
 # Search and play a track immediately
-uv run simp-mcp music play "Perturbator Future Club"
+uv run kiosktunes-mcp music play "Perturbator Future Club"
 
 # Playback controls
-uv run simp-mcp music pause
-uv run simp-mcp music resume
-uv run simp-mcp music next
-uv run simp-mcp music volume 85
+uv run kiosktunes-mcp music pause
+uv run kiosktunes-mcp music resume
+uv run kiosktunes-mcp music next
+uv run kiosktunes-mcp music volume 85
 
 # Inspect live audio codec, bitrate, and queue
-uv run simp-mcp music status
-uv run simp-mcp music queue
+uv run kiosktunes-mcp music status
+uv run kiosktunes-mcp music queue
 
 # Rate/like the currently playing track (0.0 to 5.0 score)
-uv run simp-mcp music rate --score 5.0 --notes "Favorite track"
+uv run kiosktunes-mcp music rate --score 5.0 --notes "Favorite track"
 
 # View rated tracks and listening history
-uv run simp-mcp music ratings --min 4.0
-uv run simp-mcp history
+uv run kiosktunes-mcp music ratings --min 4.0
+uv run kiosktunes-mcp history
 ```
 
 ---
 
 ## 🤖 MCP Agent Integration (Claude, Cursor, OpenCode, DSH)
 
-`simp_mcp` operates as a standard stdio Model Context Protocol (MCP) server.
+`kiosktunes-mcp` operates as a standard stdio Model Context Protocol (MCP) server.
 
 ### Automatic Setup
 
 Print ready-to-paste configurations for any tool:
 ```bash
-uv run simp-mcp mcp --config
+uv run kiosktunes-mcp mcp --config
 ```
 
 Or write turnkey configuration into your current project:
 ```bash
-uv run simp-mcp mcp --setup
+uv run kiosktunes-mcp mcp --setup
 ```
 
 ### Community Registries & 1-Click Install
@@ -120,7 +120,7 @@ uv run simp-mcp mcp --setup
 
 #### 1. Claude Code CLI
 ```bash
-claude mcp add music uv -- run --directory /absolute/path/to/simp_mcp simp-mcp
+claude mcp add music uv -- run --directory /absolute/path/to/kiosktunes-mcp kiosktunes-mcp
 ```
 
 #### 2. OpenCode / Cursor / DSH / Claude Desktop (`mcp.json`)
@@ -131,7 +131,7 @@ Add the following to your agent configuration (`.agents/mcp.json` or `~/.dsh/mcp
   "mcpServers": {
     "music": {
       "command": "uv",
-      "args": ["run", "--directory", "/absolute/path/to/simp_mcp", "simp-mcp"]
+      "args": ["run", "--directory", "/absolute/path/to/kiosktunes-mcp", "kiosktunes-mcp"]
     }
   }
 }

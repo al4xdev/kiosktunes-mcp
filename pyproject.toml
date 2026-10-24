@@ -1,5 +1,5 @@
 [project]
-name = "simp-mcp"
+name = "kiosktunes-mcp"
 version = "0.1.0"
 description = "Local TTY music control through MCP and mpv"
 readme = "README.md"
@@ -8,6 +8,8 @@ requires-python = ">=3.11"
 dependencies = ["mcp>=1.12,<2", "ytmusicapi>=1.11,<2", "yt-dlp[default]>=2025.1"]
 
 [project.scripts]
+kiosktunes-mcp = "rt_music.cli:main"
+kiosktunes = "rt_music.cli:main"
 simp-mcp = "rt_music.cli:main"
 rt-music = "rt_music.server:main"
 

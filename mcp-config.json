@@ -2,7 +2,7 @@
   "mcpServers": {
     "music": {
       "command": "uv",
-      "args": ["run", "--directory", "/absolute/path/to/simp_mcp", "simp-mcp"]
+      "args": ["run", "--directory", "/absolute/path/to/kiosktunes-mcp", "kiosktunes-mcp"]
     }
   }
 }

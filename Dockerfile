@@ -24,4 +24,4 @@ COPY src ./src
 COPY README.md LICENSE ./
 
 # Run the MCP stdio server
-ENTRYPOINT ["uv", "run", "simp-mcp"]
+ENTRYPOINT ["uv", "run", "kiosktunes-mcp"]
