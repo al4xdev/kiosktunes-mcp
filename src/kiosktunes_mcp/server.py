@@ -9,7 +9,7 @@ from functools import lru_cache
 from mcp.server.fastmcp import FastMCP
 from ytmusicapi import YTMusic
 
-from rt_music.player import Player, config_dir
+from kiosktunes_mcp.player import Player, config_dir
 
 mcp = FastMCP(
     "kiosktunes-mcp",
@@ -166,7 +166,7 @@ def get_library_playlists(limit: int = 25) -> list:
 @mcp.tool()
 def get_radio(video_id: str, limit: int = 25, detailed: bool = False) -> dict:
     """Get radio recommendations for a song without changing the queue."""
-    from rt_music.player import video_url
+    from kiosktunes_mcp.player import video_url
 
     video_url(video_id)
     result = remote(
@@ -277,7 +277,7 @@ def edit_queue(action: str, index: int | list[int], destination: int = 0) -> lis
 @mcp.tool()
 def enqueue_playlist(playlist_id: str, limit: int = 50) -> dict:
     """Enqueue up to 100 playlist tracks, skipping entries without a valid videoId."""
-    from rt_music.player import VIDEO_ID
+    from kiosktunes_mcp.player import VIDEO_ID
 
     playlist = get_playlist(playlist_id, limit, True)
     ids = [track.get("videoId") for track in playlist.get("tracks", [])]
@@ -320,7 +320,7 @@ def shutdown_player() -> dict:
 @mcp.tool()
 def auth_status() -> dict:
     """Report local auth file presence and permissions, never cookie/token values. Not a remote login check."""
-    from rt_music.auth import AuthError, status
+    from kiosktunes_mcp.auth import AuthError, status
 
     try:
         result = status()
@@ -337,7 +337,7 @@ def auth_status() -> dict:
 @mcp.tool()
 def import_simpmusic_auth(force: bool = False, auth_user: int = 0) -> dict:
     """Explicitly import the local SimpMusic YouTube session. Fixed source, metadata only; force replaces existing files."""
-    from rt_music.auth import AuthError, import_simpmusic
+    from kiosktunes_mcp.auth import AuthError, import_simpmusic
 
     if not 0 <= auth_user <= 100:
         raise ValueError("auth_user must be an account index between 0 and 100.")
@@ -363,8 +363,8 @@ def rate_music(
     notes: str | None = None,
 ) -> dict:
     """Rate or like one or multiple tracks (0 to 5 score) to train user taste profile for AI discovery. If video_id is omitted, rates the currently playing track."""
-    from rt_music.history import log_rating
-    from rt_music.player import VIDEO_ID
+    from kiosktunes_mcp.history import log_rating
+    from kiosktunes_mcp.player import VIDEO_ID
 
     items: list[tuple[str, float, str | None, list[str] | None]] = []
 
@@ -420,7 +420,7 @@ def rate_music(
 @mcp.tool()
 def get_user_ratings(limit: int = 50, min_rating: float = 0.0) -> list[dict]:
     """Retrieve saved user song ratings (0 to 5) to understand musical taste and craft tailored recommendations."""
-    from rt_music.history import get_ratings
+    from kiosktunes_mcp.history import get_ratings
 
     if not math.isfinite(min_rating) or not 0 <= min_rating <= 5:
         raise ValueError("min_rating must be between 0 and 5.")
@@ -430,7 +430,7 @@ def get_user_ratings(limit: int = 50, min_rating: float = 0.0) -> list[dict]:
 @mcp.tool()
 def get_listening_history(limit: int = 50) -> list:
     """Retrieve the recent listening history log to understand user music taste and craft custom playlists."""
-    from rt_music.history import get_history
+    from kiosktunes_mcp.history import get_history
 
     return get_history(limit=limit_value(limit))
 

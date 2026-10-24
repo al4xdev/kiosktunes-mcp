@@ -25,7 +25,7 @@ def video_url(video_id: str) -> str:
 
 
 def config_dir() -> Path:
-    from rt_music.auth import config_dir as auth_config_dir
+    from kiosktunes_mcp.auth import config_dir as auth_config_dir
 
     return auth_config_dir()
 
@@ -230,7 +230,7 @@ class Player:
             if is_replace:
                 self.command("set_property", "pause", False)
             try:
-                from rt_music.history import log_playback
+                from kiosktunes_mcp.history import log_playback
 
                 log_playback(
                     vid,

@@ -8,7 +8,7 @@ from mcp.client.stdio import stdio_client
 def test_stdio_protocol():
     async def run():
         parameters = StdioServerParameters(
-            command=sys.executable, args=["-m", "rt_music.server"]
+            command=sys.executable, args=["-m", "kiosktunes_mcp.server"]
         )
         async with (
             stdio_client(parameters) as (read, write),

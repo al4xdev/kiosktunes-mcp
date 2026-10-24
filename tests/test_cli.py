@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from rt_music import cli, server
+from kiosktunes_mcp import cli, server
 
 
 def test_default_is_stdio(monkeypatch):
@@ -108,7 +108,7 @@ def test_cli_unexpected_errors_are_redacted(monkeypatch, capsys):
 
 
 def test_auth_tool_boundaries(monkeypatch):
-    from rt_music import auth
+    from kiosktunes_mcp import auth
 
     calls = []
     monkeypatch.setattr(

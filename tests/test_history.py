@@ -1,4 +1,4 @@
-from rt_music import history
+from kiosktunes_mcp import history
 
 
 def test_log_and_get_history(tmp_path, monkeypatch):

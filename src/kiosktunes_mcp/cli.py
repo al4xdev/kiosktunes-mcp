@@ -6,8 +6,8 @@ import argparse
 import json
 import sys
 
-from rt_music import auth, server
-from rt_music.player import VIDEO_ID
+from kiosktunes_mcp import auth, server
+from kiosktunes_mcp.player import VIDEO_ID
 
 
 def music_parser() -> argparse.ArgumentParser:
@@ -206,7 +206,7 @@ def main(argv: list[str] | None = None) -> int:
         server.main()
         return 0
     if argv[0] == "history":
-        from rt_music.history import get_history
+        from kiosktunes_mcp.history import get_history
 
         limit = 20
         if len(argv) > 1 and argv[1].isdigit():

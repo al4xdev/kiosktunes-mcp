@@ -8,7 +8,13 @@ import pytest
 from ytmusicapi.auth.auth_parse import determine_auth_type, parse_auth_str
 from ytmusicapi.auth.types import AuthType
 
-from rt_music.auth import AuthError, config_dir, import_simpmusic, read_cookies, status
+from kiosktunes_mcp.auth import (
+    AuthError,
+    config_dir,
+    import_simpmusic,
+    read_cookies,
+    status,
+)
 
 
 @pytest.fixture

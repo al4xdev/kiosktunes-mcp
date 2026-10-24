@@ -4,8 +4,8 @@ import threading
 
 import pytest
 
-from rt_music import server
-from rt_music.player import Player, video_url
+from kiosktunes_mcp import server
+from kiosktunes_mcp.player import Player, video_url
 
 
 def test_video_id_validation():
@@ -110,7 +110,7 @@ def test_busy_player_is_not_replaced(monkeypatch, tmp_path):
     listener.bind(str(player.socket_path))
     listener.listen(2)
     monkeypatch.setattr(player, "available", lambda: False)
-    monkeypatch.setattr("rt_music.player.shutil.which", lambda _: "/usr/bin/mpv")
+    monkeypatch.setattr("kiosktunes_mcp.player.shutil.which", lambda _: "/usr/bin/mpv")
     try:
         with pytest.raises(RuntimeError, match="existing"):
             player.ensure()
@@ -134,9 +134,9 @@ def test_startup_failure_reaps_process(monkeypatch, tmp_path):
             calls.append("wait")
 
     monkeypatch.setattr(player, "available", lambda: False)
-    monkeypatch.setattr("rt_music.player.shutil.which", lambda _: "/usr/bin/mpv")
+    monkeypatch.setattr("kiosktunes_mcp.player.shutil.which", lambda _: "/usr/bin/mpv")
     monkeypatch.setattr(
-        "rt_music.player.subprocess.Popen", lambda *args, **kwargs: FailedProcess()
+        "kiosktunes_mcp.player.subprocess.Popen", lambda *args, **kwargs: FailedProcess()
     )
     with pytest.raises(RuntimeError, match="terminated"):
         player.ensure()
@@ -269,7 +269,7 @@ def test_edit_queue_batch_remove(monkeypatch):
 
 
 def test_rate_music_single_and_batch(tmp_path, monkeypatch):
-    from rt_music import history
+    from kiosktunes_mcp import history
 
     monkeypatch.setattr(history, "history_dir", lambda: tmp_path)
 
@@ -295,7 +295,7 @@ def test_rate_music_single_and_batch(tmp_path, monkeypatch):
 
 
 def test_rate_music_current_track(monkeypatch, tmp_path):
-    from rt_music import history
+    from kiosktunes_mcp import history
 
     monkeypatch.setattr(history, "history_dir", lambda: tmp_path)
     monkeypatch.setattr(
