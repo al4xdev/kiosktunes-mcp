@@ -21,14 +21,16 @@ When working in low-resource environments (e.g., pure TTY sessions, heavy build/
 ### The Solution:
 - **Detached Daemon Architecture:** A dedicated `mpv` instance runs in background with a Unix IPC socket (`mpv.sock`). Closing the agent, disconnecting chats, or switching TTYs **never interrupts playback**.
 - **Real-Time DSP Hardware Enhancement (Zero VRAM):** Rather than slow, heavy AI upscaling (AudioSR) that consumes gigabytes of VRAM, `simp_mcp` leverages native real-time DSP filters (`crystalizer` for transient attack/air recovery and `extrastereo` for spatial headstage expansion).
-- **Persistent Agent Memory:** Every track played is logged to structured `JSONL` format so future AI agents can query your listening history (`get_listening_history`) to curate tailored playlists for deep work or hackathons.
+- **Persistent Agent Memory & User Taste Profiling:** Every track played is logged to structured `JSONL` format. Users and agents can classify and rate songs on a 0–5 star scale (`rate_music`, `get_user_ratings`) to curate personalized playlists and discover new music based on verified favorites.
+- **Compact & Batch-First for LLMs:** High-leverage, polymorphic tools accept single items or lists. Search runs multi-query lookups concurrently, playback defaults to non-interrupting `enqueue=True`, and pruned compact metadata cuts LLM context token usage by over 80%.
 - **Lazy Turnkey MCP:** Instant startup with zero background overhead until an audio command is actually dispatched.
 
 ---
 
 ## 🚀 Key Features
 
-- **20 MCP Tools** for search, playback, queue management, volume, seek, radio recommendations, lyrics, and history.
+- **21 MCP Tools** for search, playback, batch queueing, volume, seek, radio recommendations, lyrics, history, and taste ratings.
+- **Small-Model Optimized:** Polymorphic single/batch operations without tool bloat; compact search outputs keep LLM context clean.
 - **Strict Opus Stream Selection:** Prefers raw 48 kHz Opus (`format 251`) without lossy-to-lossy MP3 re-encoding.
 - **Zero VRAM footprint:** Keeps your GPU 100% free for LLMs (Ollama/vLLM) and Diffusion models (Flux/SDXL).
 - **CLI & Agent Friendly:** Use it via conversational AI agents (Claude Code, Cursor, OpenCode, DSH) or standard terminal CLI.
@@ -79,7 +81,11 @@ uv run simp-mcp music volume 85
 uv run simp-mcp music status
 uv run simp-mcp music queue
 
-# View playback history logged for agents
+# Rate/like the currently playing track (0.0 to 5.0 score)
+uv run simp-mcp music rate --score 5.0 --notes "Favorite track"
+
+# View rated tracks and listening history
+uv run simp-mcp music ratings --min 4.0
 uv run simp-mcp history
 ```
 
@@ -128,10 +134,10 @@ Add the following to your agent configuration (`.agents/mcp.json` or `~/.dsh/mcp
 
 | Category | Tools | Description |
 |---|---|---|
-| **Discovery** | `search_music`, `get_album`, `get_artist`, `get_radio`, `get_lyrics` | Search songs/albums/artists and fetch related tracks or lyrics |
-| **Playback** | `play_music`, `playback_status`, `control_playback`, `seek_music`, `set_volume`, `set_repeat` | Real-time audio control; playback persists between agent turns |
-| **Queue** | `get_queue`, `edit_queue`, `enqueue_playlist` | Manage, reorder, or clear the playlist queue |
-| **Intelligence** | `get_listening_history` | Returns recent playback entries for AI agents to craft custom playlists |
+| **Discovery** | `search_music`, `get_album`, `get_artist`, `get_radio`, `get_lyrics` | Search songs/albums/artists (compact by default, concurrent multi-query support) and fetch related tracks or lyrics |
+| **Playback** | `play_music`, `playback_status`, `control_playback`, `seek_music`, `set_volume`, `set_repeat` | Real-time audio control; non-interrupting `enqueue=True` by default, batch video_id queuing |
+| **Queue** | `get_queue`, `edit_queue`, `enqueue_playlist` | Manage, reorder, or batch remove playlist tracks |
+| **Intelligence** | `get_listening_history`, `rate_music`, `get_user_ratings` | Log listening activity, rate tracks (0–5), and retrieve taste profiles for AI-powered discovery |
 | **Auth & Lifecycle** | `auth_status`, `import_simpmusic_auth`, `shutdown_player` | Safe session inspection and graceful mpv shutdown |
 
 ---
@@ -156,7 +162,7 @@ The player configures `mpv` to bypass arbitrary transcoders and apply real-time 
 
 - **No Credentials in Diagnostics:** All MCP tool errors and status returns sanitize tokens, cookies, and signed URLs.
 - **Local Isolation:** Credentials (if imported) remain in `$XDG_CONFIG_HOME/rt-music/` with `0700/0600` permissions and are never committed or returned through MCP.
-- **Safe History:** `logs/history.jsonl` tracks solely music metadata (`video_id`, `title`, `artists`, `timestamp`), never private credentials.
+- **Safe History & Ratings:** `logs/history.jsonl` and `logs/ratings.jsonl` track solely music metadata (`video_id`, `title`, `artists`, `rating`, `timestamp`), never private credentials.
 
 ---
 
@@ -167,7 +173,7 @@ Run the comprehensive unit test suite:
 ```bash
 uv run pytest -q
 ```
-*Current test suite: **42 passed tests** covering IPC socket handling, CLI argument parsing, audio history, and authentication sanitization.*
+*Current test suite: **54 passed tests** covering concurrent multi-query search, compact output, batch playback, reverse queue removal, rating profiles, audio DSP, and authentication sanitization.*
 
 ---
 

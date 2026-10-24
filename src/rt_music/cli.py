@@ -62,6 +62,17 @@ def music_parser() -> argparse.ArgumentParser:
     edit.add_argument("action", choices=["remove", "move", "select"])
     edit.add_argument("index", type=int)
     edit.add_argument("--destination", type=int, default=0)
+    rate = commands.add_parser("rate", help="Rate or like a track (0 to 5 score)")
+    rate.add_argument(
+        "video_id", nargs="?", help="Video ID (defaults to currently playing)"
+    )
+    rate.add_argument(
+        "--score", type=float, default=5.0, help="Rating from 0.0 to 5.0"
+    )
+    rate.add_argument("--notes", help="Optional notes on what you liked/disliked")
+    ratings = commands.add_parser("ratings", help="View your rated tracks")
+    ratings.add_argument("--min", type=float, default=0.0, dest="min_rating")
+    ratings.add_argument("--limit", type=int, default=50)
     authentication = commands.add_parser(
         "auth", help="Local auth metadata or fixed-source SimpMusic import; no secrets"
     )
@@ -133,6 +144,10 @@ def execute(args: argparse.Namespace):
         return server.enqueue_playlist(args.playlist_id, limit=args.limit)
     if command == "edit":
         return server.edit_queue(args.action, args.index, args.destination)
+    if command == "rate":
+        return server.rate_music(args.video_id, rating=args.score, notes=args.notes)
+    if command == "ratings":
+        return server.get_user_ratings(limit=args.limit, min_rating=args.min_rating)
     if command == "shutdown":
         return server.shutdown_player()
     if command == "auth":

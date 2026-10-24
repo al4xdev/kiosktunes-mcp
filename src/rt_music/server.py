@@ -1,6 +1,9 @@
 """MCP stdio entry point. Diagnostics never share cookies or stream URLs."""
 
+from __future__ import annotations
+
 import math
+from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 
 from mcp.server.fastmcp import FastMCP
@@ -10,9 +13,55 @@ from rt_music.player import Player, config_dir
 
 mcp = FastMCP(
     "simp-mcp",
-    instructions="Search for a videoId before playing. play_music loads asynchronously; confirm playback_status. Playback persists between chats. Do not promise premium quality. Authentication tools return metadata only, never credentials.",
+    instructions="Search for a videoId before playing. play_music enqueues by default and accepts single or multiple videoIds; confirm playback_status. Playback persists between chats. Do not promise premium quality. Authentication tools return metadata only, never credentials.",
 )
 player = Player()
+
+
+def compact_item(item: dict) -> dict:
+    """Trim heavy metadata (thumbnails, internal flags) for LLM context efficiency."""
+    if not isinstance(item, dict):
+        return item
+    compact: dict = {}
+    result_type = item.get("resultType")
+    if result_type:
+        compact["resultType"] = result_type
+
+    title = item.get("title") or item.get("artist")
+    if title:
+        compact["title"] = title
+
+    for key in ("videoId", "browseId", "playlistId"):
+        val = item.get(key)
+        if val:
+            compact[key] = val
+
+    if "artists" in item and isinstance(item["artists"], list):
+        names = [
+            a.get("name")
+            for a in item["artists"]
+            if isinstance(a, dict) and a.get("name")
+        ]
+        if names:
+            compact["artists"] = names
+    elif "artist" in item and isinstance(item["artist"], str):
+        compact["artists"] = [item["artist"]]
+
+    if "album" in item:
+        album = item["album"]
+        if isinstance(album, dict) and album.get("name"):
+            compact["album"] = album["name"]
+        elif isinstance(album, str):
+            compact["album"] = album
+
+    duration = item.get("duration") or item.get("length")
+    if duration:
+        compact["duration"] = duration
+
+    if item.get("year"):
+        compact["year"] = item["year"]
+
+    return compact
 
 
 @lru_cache(maxsize=1)
@@ -43,29 +92,61 @@ def limit_value(limit):
 
 
 @mcp.tool()
-def search_music(query: str, filter: str = "songs", limit: int = 10) -> list:
-    """Search songs, videos, albums, artists or playlists. Returns videoId/browseId."""
-    if not query.strip() or len(query) > 500:
-        raise ValueError("query must contain 1 to 500 characters.")
+def search_music(
+    query: str | list[str],
+    filter: str = "songs",
+    limit: int = 10,
+    detailed: bool = False,
+) -> list[dict] | dict[str, list[dict]]:
+    """Search songs, videos, albums, artists or playlists. Accepts single query or list of queries."""
     if filter not in {"songs", "videos", "albums", "artists", "playlists"}:
         raise ValueError("filter: songs, videos, albums, artists or playlists.")
-    return remote(music().search, query, filter=filter, limit=limit_value(limit))[
-        :limit
-    ]
+    bounded_limit = limit_value(limit)
+
+    def _execute(q: str) -> list[dict]:
+        if not isinstance(q, str) or not q.strip() or len(q) > 500:
+            raise ValueError("Each query must contain 1 to 500 characters.")
+        raw = remote(music().search, q, filter=filter, limit=bounded_limit)[
+            :bounded_limit
+        ]
+        if not detailed:
+            return [compact_item(item) for item in raw]
+        return raw
+
+    if isinstance(query, str):
+        return _execute(query)
+    if isinstance(query, list):
+        if not query:
+            raise ValueError("query list cannot be empty.")
+        if len(query) > 20:
+            raise ValueError("Cannot search more than 20 queries at once.")
+        with ThreadPoolExecutor(max_workers=min(len(query), 5)) as pool:
+            results = list(pool.map(_execute, query))
+        return dict(zip(query, results))
+    raise TypeError("query must be a string or list of strings.")
 
 
 @mcp.tool()
-def get_playlist(playlist_id: str, limit: int = 50) -> dict:
+def get_playlist(playlist_id: str, limit: int = 50, detailed: bool = False) -> dict:
     """List tracks in a YouTube Music playlist; use videoId for playback."""
     result = remote(music().get_playlist, playlist_id, limit=limit_value(limit))
-    result["tracks"] = result.get("tracks", [])[:limit]
+    tracks = result.get("tracks", [])[:limit]
+    if not detailed:
+        tracks = [compact_item(t) for t in tracks]
+        result.pop("thumbnails", None)
+    result["tracks"] = tracks
     return result
 
 
 @mcp.tool()
-def get_album(browse_id: str) -> dict:
+def get_album(browse_id: str, detailed: bool = False) -> dict:
     """Get album metadata and tracks using the browseId returned by search."""
-    return remote(music().get_album, browse_id)
+    result = remote(music().get_album, browse_id)
+    if not detailed:
+        tracks = result.get("tracks", [])
+        result["tracks"] = [compact_item(t) for t in tracks]
+        result.pop("thumbnails", None)
+    return result
 
 
 @mcp.tool()
@@ -83,20 +164,25 @@ def get_library_playlists(limit: int = 25) -> list:
 
 
 @mcp.tool()
-def get_radio(video_id: str, limit: int = 25) -> dict:
+def get_radio(video_id: str, limit: int = 25, detailed: bool = False) -> dict:
     """Get radio recommendations for a song without changing the queue."""
     from rt_music.player import video_url
 
     video_url(video_id)
-    return remote(
+    result = remote(
         music().get_watch_playlist, videoId=video_id, limit=limit_value(limit)
     )
+    tracks = result.get("tracks", [])[:limit]
+    if not detailed:
+        tracks = [compact_item(t) for t in tracks]
+    result["tracks"] = tracks
+    return result
 
 
 @mcp.tool()
-def play_music(video_id: str, enqueue: bool = False) -> dict:
-    """Play the best available audio or enqueue it. Acceptance does not confirm playback has started."""
-    return player.play(video_id, enqueue)
+def play_music(video_id: str | list[str], enqueue: bool = True) -> dict:
+    """Play the best available audio or enqueue it. Defaults to enqueue=True. Accepts single video_id or list of video_ids."""
+    return player.play(video_id, enqueue=enqueue)
 
 
 @mcp.tool()
@@ -154,18 +240,34 @@ def set_volume(volume: float) -> dict:
 
 
 @mcp.tool()
-def edit_queue(action: str, index: int, destination: int = 0) -> list:
-    """Remove, move or select a queued item by index (action remove/move/select)."""
+def edit_queue(action: str, index: int | list[int], destination: int = 0) -> list:
+    """Remove, move or select a queued item by index (action remove/move/select). Accepts int or list[int] for remove."""
     queue = player.queue()
-    if not 0 <= index < len(queue):
-        raise ValueError("Queue index is out of range.")
+    if isinstance(index, list) and action != "remove":
+        raise ValueError("Only action 'remove' supports multiple indices.")
     if action == "remove":
-        player.command("playlist-remove", index)
+        if isinstance(index, int):
+            indices = [index]
+        elif isinstance(index, list):
+            if not index:
+                raise ValueError("Queue index list cannot be empty.")
+            indices = index
+        else:
+            raise TypeError("index must be an integer or list of integers.")
+        for idx in indices:
+            if not isinstance(idx, int) or not 0 <= idx < len(queue):
+                raise ValueError("Queue index is out of range.")
+        for idx in sorted(set(indices), reverse=True):
+            player.command("playlist-remove", idx)
     elif action == "move":
+        if not isinstance(index, int) or not 0 <= index < len(queue):
+            raise ValueError("Queue index is out of range.")
         if not 0 <= destination < len(queue):
             raise ValueError("Destination index is out of range.")
         player.command("playlist-move", index, destination)
     elif action == "select":
+        if not isinstance(index, int) or not 0 <= index < len(queue):
+            raise ValueError("Queue index is out of range.")
         player.command("set_property", "playlist-pos", index)
     else:
         raise ValueError("action: remove, move or select.")
@@ -177,13 +279,13 @@ def enqueue_playlist(playlist_id: str, limit: int = 50) -> dict:
     """Enqueue up to 100 playlist tracks, skipping entries without a valid videoId."""
     from rt_music.player import VIDEO_ID
 
-    playlist = get_playlist(playlist_id, limit)
+    playlist = get_playlist(playlist_id, limit, True)
     ids = [track.get("videoId") for track in playlist.get("tracks", [])]
     ids = [item for item in ids if isinstance(item, str) and VIDEO_ID.fullmatch(item)][
         : limit_value(limit)
     ]
-    for video_id in ids:
-        player.play(video_id, enqueue=True)
+    if ids:
+        player.play(ids, enqueue=True)
     return {"enqueued": len(ids), "queue": player.queue()}
 
 
@@ -250,6 +352,79 @@ def import_simpmusic_auth(force: bool = False, auth_user: int = 0) -> dict:
         "Catalog auth reloaded. Restart the player when convenient to reload playback cookies. No credentials returned."
     )
     return result
+
+
+@mcp.tool()
+def rate_music(
+    video_id: str | list[str] | dict[str, float] | None = None,
+    rating: float = 5.0,
+    title: str | None = None,
+    artists: list[str] | None = None,
+    notes: str | None = None,
+) -> dict:
+    """Rate or like one or multiple tracks (0 to 5 score) to train user taste profile for AI discovery. If video_id is omitted, rates the currently playing track."""
+    from rt_music.history import log_rating
+    from rt_music.player import VIDEO_ID
+
+    items: list[tuple[str, float, str | None, list[str] | None]] = []
+
+    if video_id is None:
+        queue = player.queue()
+        current = next((item for item in queue if item.get("current")), None)
+        if not current or not current.get("video_id"):
+            raise ValueError(
+                "No track is currently playing. Provide a video_id to rate."
+            )
+        items.append(
+            (current["video_id"], rating, title or current.get("title"), artists)
+        )
+    elif isinstance(video_id, str):
+        if not VIDEO_ID.fullmatch(video_id):
+            raise ValueError("Use an 11-character video_id returned by search.")
+        items.append((video_id, rating, title, artists))
+    elif isinstance(video_id, list):
+        if not video_id:
+            raise ValueError("video_id list cannot be empty.")
+        if len(video_id) > 100:
+            raise ValueError("Cannot rate more than 100 tracks at once.")
+        for vid in video_id:
+            if not isinstance(vid, str) or not VIDEO_ID.fullmatch(vid):
+                raise ValueError("Each video_id must be an 11-character string.")
+            items.append((vid, rating, None, None))
+    elif isinstance(video_id, dict):
+        if not video_id:
+            raise ValueError("Ratings dictionary cannot be empty.")
+        if len(video_id) > 100:
+            raise ValueError("Cannot rate more than 100 tracks at once.")
+        for vid, score in video_id.items():
+            if not isinstance(vid, str) or not VIDEO_ID.fullmatch(vid):
+                raise ValueError("Each video_id must be an 11-character string.")
+            items.append((vid, float(score), None, None))
+    else:
+        raise TypeError(
+            "video_id must be a string, list of strings, or dict of video_id->rating."
+        )
+
+    logged = []
+    for vid, score, t, a in items:
+        entry = log_rating(vid, score, title=t, artists=a, notes=notes)
+        logged.append(entry)
+
+    return {
+        "rated": len(logged),
+        "ratings": logged,
+        "note": "Ratings saved to user music taste profile for personalized recommendations.",
+    }
+
+
+@mcp.tool()
+def get_user_ratings(limit: int = 50, min_rating: float = 0.0) -> list[dict]:
+    """Retrieve saved user song ratings (0 to 5) to understand musical taste and craft tailored recommendations."""
+    from rt_music.history import get_ratings
+
+    if not math.isfinite(min_rating) or not 0 <= min_rating <= 5:
+        raise ValueError("min_rating must be between 0 and 5.")
+    return get_ratings(limit=limit_value(limit), min_rating=min_rating)
 
 
 @mcp.tool()

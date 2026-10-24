@@ -1,5 +1,7 @@
 """A detached mpv process owns playback and queue across MCP sessions."""
 
+from __future__ import annotations
+
 import json
 import os
 import re
@@ -197,21 +199,52 @@ class Player:
             )
         return result
 
-    def play(self, video_id, enqueue=False, title=None, artists=None):
-        url = video_url(video_id)
-        self.ensure()
-        self.command("loadfile", url, "append-play" if enqueue else "replace")
-        if not enqueue:
-            self.command("set_property", "pause", False)
-        try:
-            from rt_music.history import log_playback
+    def play(
+        self,
+        video_id: str | list[str],
+        enqueue: bool = True,
+        title: str | None = None,
+        artists: list[str] | None = None,
+    ):
+        if isinstance(video_id, str):
+            ids = [video_id]
+        elif isinstance(video_id, list):
+            if not video_id:
+                raise ValueError("video_id list cannot be empty.")
+            if len(video_id) > 100:
+                raise ValueError("Cannot enqueue more than 100 tracks at once.")
+            ids = video_id
+        else:
+            raise TypeError("video_id must be an 11-character string or list of strings.")
 
-            log_playback(video_id, title=title, artists=artists, source="play_music")
-        except Exception:  # noqa: S110, BLE001 — best-effort: playback must not fail because history is unavailable
-            pass
+        # Validate all IDs up front before issuing any mpv commands
+        for vid in ids:
+            video_url(vid)
+
+        self.ensure()
+        for i, vid in enumerate(ids):
+            url = video_url(vid)
+            is_replace = (not enqueue) and (i == 0)
+            mode = "replace" if is_replace else "append-play"
+            self.command("loadfile", url, mode)
+            if is_replace:
+                self.command("set_property", "pause", False)
+            try:
+                from rt_music.history import log_playback
+
+                log_playback(
+                    vid,
+                    title=title if len(ids) == 1 else None,
+                    artists=artists if len(ids) == 1 else None,
+                    source="play_music",
+                )
+            except Exception:  # noqa: S110, BLE001 — best-effort: playback must not fail because history is unavailable
+                pass
         return {
             "accepted": True,
-            "video_id": video_id,
+            "video_id": ids[0] if len(ids) == 1 else ids,
+            "video_ids": ids,
+            "count": len(ids),
             "enqueued": enqueue,
             "note": "Loading asynchronously; check playback_status to confirm audio playback.",
         }
