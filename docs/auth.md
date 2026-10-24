@@ -16,22 +16,22 @@ This is **session-cookie authentication**, not import of a Google OAuth refresh 
 Inspect configured authentication without displaying credentials:
 
 ```fish
-uv run simp-mcp auth status
+uv run kiosktunes-mcp auth status
 ```
 
 After explicitly deciding to reuse the local SimpMusic session:
 
 ```fish
-uv run simp-mcp auth import-simpmusic
+uv run kiosktunes-mcp auth import-simpmusic
 # Replace existing credentials only when intended:
-uv run simp-mcp auth import-simpmusic --force
+uv run kiosktunes-mcp auth import-simpmusic --force
 # Select a nonnegative account index if necessary:
-uv run simp-mcp auth import-simpmusic --auth-user 0
+uv run kiosktunes-mcp auth import-simpmusic --auth-user 0
 ```
 
-The Python module remains `rt_music` for compatibility, but `simp-mcp` is the public entry script. Use `uv run simp-mcp auth --help` for available CLI inspection options.
+`kiosktunes-mcp` is the public entry script. Use `uv run kiosktunes-mcp auth --help` for available CLI inspection options.
 
-The import writes `$XDG_CONFIG_HOME/rt-music/cookies.txt` and `browser.json`, falling back to `~/.config/rt-music/`. The legacy `rt-music` config directory is intentionally retained. `XDG_CONFIG_HOME` must be absolute. The directory is mode `0700`; files are mode `0600`. `cookies.txt` is used by yt-dlp/mpv, while `browser.json` is used by ytmusicapi. Existing files are not replaced without `--force`; unsafe symlink/non-regular destinations remain rejected even with replacement enabled.
+The import writes `$XDG_CONFIG_HOME/kiosktunes-mcp/cookies.txt` and `browser.json`, falling back to `~/.config/kiosktunes-mcp/`. `XDG_CONFIG_HOME` must be absolute. The directory is mode `0700`; files are mode `0600`. `cookies.txt` is used by yt-dlp/mpv, while `browser.json` is used by ytmusicapi. Existing files are not replaced without `--force`; unsafe symlink/non-regular destinations remain rejected even with replacement enabled.
 
 The source must be a regular file owned by the current user, not a final-component symlink, and at most 1 MiB. Only unexpired cookies whose domain rules cover `music.youtube.com` are retained. General Google/account cookies, country-specific Google domains, and unrelated YouTube subdomains are excluded. HttpOnly metadata and scope are preserved. Browser authentication requires a valid secure root-path `__Secure-3PAPISID` cookie. Errors must not disclose credential values.
 

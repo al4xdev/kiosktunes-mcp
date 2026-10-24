@@ -18,8 +18,6 @@ def history_dir() -> Path:
         return local
     base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
     path = base / "kiosktunes-mcp"
-    if not path.is_dir() and (base / "simp-mcp").is_dir():
-        return base / "simp-mcp"
     path.mkdir(parents=True, exist_ok=True)
     return path
 

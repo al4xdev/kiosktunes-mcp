@@ -170,7 +170,7 @@ The player configures `mpv` to bypass arbitrary transcoders and apply real-time 
 ## 🔒 Security & Privacy Boundary
 
 - **No Credentials in Diagnostics:** All MCP tool errors and status returns sanitize tokens, cookies, and signed URLs.
-- **Local Isolation:** Credentials (if imported) remain in `$XDG_CONFIG_HOME/rt-music/` with `0700/0600` permissions and are never committed or returned through MCP.
+- **Local Isolation:** Credentials (if imported) remain in `$XDG_CONFIG_HOME/kiosktunes-mcp/` with `0700/0600` permissions and are never committed or returned through MCP.
 - **Safe History & Ratings:** `logs/history.jsonl` and `logs/ratings.jsonl` track solely music metadata (`video_id`, `title`, `artists`, `rating`, `timestamp`), never private credentials.
 
 ---

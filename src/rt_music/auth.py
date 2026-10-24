@@ -26,11 +26,7 @@ def config_dir() -> Path:
     base = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
     if not base.is_absolute():
         raise AuthError("XDG_CONFIG_HOME must be an absolute path")
-    primary = base / "kiosktunes-mcp"
-    legacy = base / "rt-music"
-    if legacy.is_dir() and not primary.is_dir():
-        return legacy
-    return primary if primary.is_dir() else legacy
+    return base / "kiosktunes-mcp"
 
 
 @dataclass(frozen=True)

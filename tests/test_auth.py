@@ -30,7 +30,7 @@ def test_filter_and_private_import(source: Path, tmp_path: Path) -> None:
     cookies = read_cookies(source)
     assert len(cookies) == 2
     assert "fake-session" not in repr(cookies[0])
-    directory = tmp_path / "rt-music"
+    directory = tmp_path / "kiosktunes-mcp"
     result = import_simpmusic(source, directory=directory)
     assert result["cookie_count"] == 2
     assert "fake-session" not in json.dumps(result)
@@ -48,7 +48,7 @@ def test_filter_and_private_import(source: Path, tmp_path: Path) -> None:
 
 
 def test_overwrite_requires_force(source: Path, tmp_path: Path) -> None:
-    directory = tmp_path / "rt-music"
+    directory = tmp_path / "kiosktunes-mcp"
     import_simpmusic(source, directory=directory)
     before = (directory / "browser.json").read_bytes()
     with pytest.raises(AuthError, match="--force"):
@@ -62,7 +62,7 @@ def test_overwrite_requires_force(source: Path, tmp_path: Path) -> None:
 
 
 def test_existing_single_file_blocks_whole_import(source: Path, tmp_path: Path) -> None:
-    directory = tmp_path / "rt-music"
+    directory = tmp_path / "kiosktunes-mcp"
     directory.mkdir()
     (directory / "browser.json").write_text("existing")
     with pytest.raises(AuthError, match="--force"):
@@ -76,7 +76,7 @@ def test_reject_symlinks(source: Path, tmp_path: Path) -> None:
     link.symlink_to(source)
     with pytest.raises(AuthError):
         read_cookies(link)
-    directory = tmp_path / "rt-music"
+    directory = tmp_path / "kiosktunes-mcp"
     directory.mkdir()
     (directory / "cookies.txt").symlink_to(source)
     with pytest.raises(AuthError, match="unsafe"):
@@ -111,7 +111,7 @@ def test_missing_signing_cookie_writes_nothing(tmp_path: Path) -> None:
     source.write_text(
         "# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t0\tSID\tfake"
     )
-    directory = tmp_path / "rt-music"
+    directory = tmp_path / "kiosktunes-mcp"
     with pytest.raises(AuthError, match="__Secure-3PAPISID"):
         import_simpmusic(source, directory=directory)
     assert not directory.exists()
@@ -119,7 +119,7 @@ def test_missing_signing_cookie_writes_nothing(tmp_path: Path) -> None:
 
 def test_xdg_absolute(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
-    assert config_dir() == tmp_path / "rt-music"
+    assert config_dir() == tmp_path / "kiosktunes-mcp"
     monkeypatch.setenv("XDG_CONFIG_HOME", "relative")
     with pytest.raises(AuthError, match="absolute"):
         config_dir()
