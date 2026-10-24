@@ -10,6 +10,7 @@ dependencies = ["mcp>=1.12,<2", "ytmusicapi>=1.11,<2", "yt-dlp[default]>=2025.1"
 [project.scripts]
 kiosktunes-mcp = "kiosktunes_mcp.cli:main"
 kiosktunes = "kiosktunes_mcp.cli:main"
+simp-mcp = "kiosktunes_mcp.cli:main"
 
 [build-system]
 requires = ["hatchling"]
