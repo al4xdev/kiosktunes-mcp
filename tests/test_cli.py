@@ -127,3 +127,28 @@ def test_auth_tool_boundaries(monkeypatch):
 def test_volume_validation_is_english(capsys):
     assert cli.main(["music", "volume", "101"]) == 1
     assert "between 0 and 100" in capsys.readouterr().err
+
+
+def test_mcp_snippet_uses_uvx_when_installed(monkeypatch):
+    from kiosktunes_mcp import paths
+
+    monkeypatch.setattr(paths, "source_root", lambda: None)
+    snippet = cli.mcp_config_snippets()
+    assert snippet["mcp_json"]["mcpServers"]["music"] == {
+        "command": "uvx",
+        "args": ["kiosktunes-mcp"],
+    }
+    assert snippet["claude_code"] == "claude mcp add music uvx -- kiosktunes-mcp"
+
+
+def test_mcp_snippet_uses_checkout_when_developing(tmp_path, monkeypatch):
+    from kiosktunes_mcp import paths
+
+    monkeypatch.setattr(paths, "source_root", lambda: tmp_path)
+    snippet = cli.mcp_config_snippets()
+    assert snippet["mcp_json"]["mcpServers"]["music"]["args"] == [
+        "run",
+        "--directory",
+        str(tmp_path),
+        "kiosktunes-mcp",
+    ]

@@ -58,36 +58,47 @@ When working in low-resource environments (e.g., pure TTY sessions, heavy build/
 
 ## 🛠️ Quick Start & Installation
 
-Clone the repository and install dependencies using `uv`:
+No clone required — install the published package with your Python tool manager:
 
 ```bash
-git clone https://github.com/al4xdev/kiosktunes-mcp.git
-cd kiosktunes-mcp
-uv sync
+uv tool install kiosktunes-mcp     # or: pipx install kiosktunes-mcp
 ```
+
+Prefer zero install? `uvx kiosktunes-mcp music play "Perturbator Future Club"` runs it straight from an ephemeral environment.
+
+Only `mpv` (and its bundled FFmpeg filters) must be installed at the system level; PyPI provides Python code, not native binaries.
 
 ### Direct CLI Usage
 
 ```bash
 # Search and play a track immediately
-uv run kiosktunes-mcp music play "Perturbator Future Club"
+kiosktunes-mcp music play "Perturbator Future Club"
 
 # Playback controls
-uv run kiosktunes-mcp music pause
-uv run kiosktunes-mcp music resume
-uv run kiosktunes-mcp music next
-uv run kiosktunes-mcp music volume 85
+kiosktunes-mcp music pause
+kiosktunes-mcp music resume
+kiosktunes-mcp music next
+kiosktunes-mcp music volume 85
 
 # Inspect live audio codec, bitrate, and queue
-uv run kiosktunes-mcp music status
-uv run kiosktunes-mcp music queue
+kiosktunes-mcp music status
+kiosktunes-mcp music queue
 
 # Rate/like the currently playing track (0.0 to 5.0 score)
-uv run kiosktunes-mcp music rate --score 5.0 --notes "Favorite track"
+kiosktunes-mcp music rate --score 5.0 --notes "Favorite track"
 
 # View rated tracks and listening history
-uv run kiosktunes-mcp music ratings --min 4.0
-uv run kiosktunes-mcp history
+kiosktunes-mcp music ratings --min 4.0
+kiosktunes-mcp history
+```
+
+### From Source (Development)
+
+```bash
+git clone https://github.com/al4xdev/kiosktunes-mcp.git
+cd kiosktunes-mcp
+uv sync
+uv run kiosktunes-mcp music play "Daft Punk Get Lucky"
 ```
 
 ---
@@ -100,13 +111,15 @@ uv run kiosktunes-mcp history
 
 Print ready-to-paste configurations for any tool:
 ```bash
-uv run kiosktunes-mcp mcp --config
+kiosktunes-mcp mcp --config
 ```
 
 Or write turnkey configuration into your current project:
 ```bash
-uv run kiosktunes-mcp mcp --setup
+kiosktunes-mcp mcp --setup
 ```
+
+Both commands emit `uv run --directory <checkout>` inside the repository and `uvx kiosktunes-mcp` for installed copies.
 
 ### Community Registries & 1-Click Install
 
@@ -120,7 +133,7 @@ uv run kiosktunes-mcp mcp --setup
 
 #### 1. Claude Code CLI
 ```bash
-claude mcp add music uv -- run --directory /absolute/path/to/kiosktunes-mcp kiosktunes-mcp
+claude mcp add music uvx -- kiosktunes-mcp
 ```
 
 #### 2. OpenCode / Cursor / DSH / Claude Desktop (`mcp.json`)
@@ -130,12 +143,14 @@ Add the following to your agent configuration (`.agents/mcp.json` or `~/.dsh/mcp
 {
   "mcpServers": {
     "music": {
-      "command": "uv",
-      "args": ["run", "--directory", "/absolute/path/to/kiosktunes-mcp", "kiosktunes-mcp"]
+      "command": "uvx",
+      "args": ["kiosktunes-mcp"]
     }
   }
 }
 ```
+
+From a source checkout, use `"command": "uv"` with `"args": ["run", "--directory", "/absolute/path/to/kiosktunes-mcp", "kiosktunes-mcp"]` instead.
 
 ---
 
@@ -171,7 +186,7 @@ The player configures `mpv` to bypass arbitrary transcoders and apply real-time 
 
 - **No Credentials in Diagnostics:** All MCP tool errors and status returns sanitize tokens, cookies, and signed URLs.
 - **Local Isolation:** Credentials (if imported) remain in `$XDG_CONFIG_HOME/kiosktunes-mcp/` with `0700/0600` permissions and are never committed or returned through MCP.
-- **Safe History & Ratings:** `logs/history.jsonl` and `logs/ratings.jsonl` track solely music metadata (`video_id`, `title`, `artists`, `rating`, `timestamp`), never private credentials.
+- **Safe History & Ratings:** `history.jsonl` and `ratings.jsonl` track solely music metadata (`video_id`, `title`, `artists`, `rating`, `timestamp`), never private credentials. They live in the checkout's `logs/` directory, or in `$XDG_DATA_HOME/kiosktunes-mcp/` (override with `KIOSKTUNES_DATA_DIR`) for installed copies.
 
 ---
 
@@ -182,7 +197,7 @@ Run the comprehensive unit test suite:
 ```bash
 uv run pytest -q
 ```
-*Current test suite: **54 passed tests** covering concurrent multi-query search, compact output, batch playback, reverse queue removal, rating profiles, audio DSP, and authentication sanitization.*
+*Current test suite: **58 passed tests** covering concurrent multi-query search, compact output, batch playback, reverse queue removal, rating profiles, audio DSP, and authentication sanitization.*
 
 ---
 

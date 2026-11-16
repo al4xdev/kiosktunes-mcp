@@ -8,12 +8,21 @@ import os
 import time
 from pathlib import Path
 
+from kiosktunes_mcp.paths import source_root
+
 
 def history_dir() -> Path:
-    """Return the base directory for history logs, prioritizing project local or XDG data."""
-    # First check project-local logs directory
-    local = Path(__file__).resolve().parent.parent.parent / "logs"
-    if local.is_dir() or local.parent.is_dir():
+    """Return the base directory for history logs: env override, checkout, then XDG data."""
+    override = os.environ.get("KIOSKTUNES_DATA_DIR")
+    if override:
+        path = Path(override).expanduser()
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+    # A source checkout keeps its logs beside the code; installed copies must not
+    # write into site-packages, so they fall back to the XDG data dir.
+    root = source_root()
+    if root is not None:
+        local = root / "logs"
         local.mkdir(parents=True, exist_ok=True)
         return local
     base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))

@@ -55,3 +55,17 @@ def test_history_annotated_with_ratings(tmp_path, monkeypatch):
     assert "user_rating" not in entries[0]
     assert entries[1]["video_id"] == "dQw4w9WgXcQ"
     assert entries[1]["user_rating"] == 4.5
+
+
+def test_history_dir_env_override_wins(tmp_path, monkeypatch):
+    monkeypatch.setenv("KIOSKTUNES_DATA_DIR", str(tmp_path / "data"))
+    assert history.history_dir() == tmp_path / "data"
+    assert (tmp_path / "data").is_dir()
+
+
+def test_installed_copy_uses_xdg_data_dir(tmp_path, monkeypatch):
+    # site-packages has no checkout marker, so logs must never land beside the code.
+    monkeypatch.delenv("KIOSKTUNES_DATA_DIR", raising=False)
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "xdg"))
+    monkeypatch.setattr(history, "source_root", lambda: None)
+    assert history.history_dir() == tmp_path / "xdg" / "kiosktunes-mcp"

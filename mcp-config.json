@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "music": {
-      "command": "uv",
-      "args": ["run", "--directory", "/absolute/path/to/kiosktunes-mcp", "kiosktunes-mcp"]
+      "command": "uvx",
+      "args": ["kiosktunes-mcp"]
     }
   }
 }

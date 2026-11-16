@@ -160,16 +160,22 @@ def execute(args: argparse.Namespace):
 
 def mcp_config_snippets() -> dict:
     """Generate ready-to-paste MCP configurations for Claude Code, Cursor, OpenCode, and DSH."""
-    from pathlib import Path
+    from kiosktunes_mcp.paths import source_root
 
-    pkg_dir = str(Path(__file__).resolve().parent.parent.parent)
+    root = source_root()
+    if root is not None:
+        # Checkout: uv runs the local project so edits take effect immediately.
+        command, args = "uv", ["run", "--directory", str(root), "kiosktunes-mcp"]
+    else:
+        # Installed from PyPI: launch the entry point in an ephemeral uvx env.
+        command, args = "uvx", ["kiosktunes-mcp"]
     return {
-        "claude_code": f"claude mcp add music uv -- run --directory {pkg_dir} kiosktunes-mcp",
+        "claude_code": f"claude mcp add music {command} -- {' '.join(args)}",
         "mcp_json": {
             "mcpServers": {
                 "music": {
-                    "command": "uv",
-                    "args": ["run", "--directory", pkg_dir, "kiosktunes-mcp"],
+                    "command": command,
+                    "args": args,
                 }
             }
         },

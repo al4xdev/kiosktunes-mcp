@@ -8,7 +8,7 @@ startCommand:
   commandFunction: |-
     (config) => {
       return {
-        command: "uv",
-        args: ["run", "kiosktunes-mcp"]
+        command: "uvx",
+        args: ["kiosktunes-mcp"]
       };
     }
