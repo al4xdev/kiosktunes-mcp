@@ -1,5 +1,6 @@
 import json
 import socket
+import subprocess
 import threading
 
 import pytest
@@ -69,6 +70,63 @@ def test_play_validates_before_start(tmp_path):
         Player(tmp_path).play("malformed")
 
 
+def test_resolve_falls_back_when_first_stream_is_rejected(monkeypatch, tmp_path):
+    player = Player(tmp_path)
+    extracted = []
+
+    def extract(video_id, client=None):
+        extracted.append(client)
+        return f"https://stream.test/{client or 'default'}", "Track"
+
+    # The default client mints URLs googlevideo rejects; the fallback answers.
+    monkeypatch.setattr(player, "extract", extract)
+    monkeypatch.setattr(player, "reachable", lambda url: url.endswith("/android"))
+    assert player.resolve("dQw4w9WgXcQ") == "https://stream.test/android"
+    assert extracted == [None, "android"]
+    assert (
+        player._known_streams()["https://stream.test/android"]["video_id"]
+        == "dQw4w9WgXcQ"
+    )
+
+
+def test_resolve_reports_why_nothing_played(monkeypatch, tmp_path):
+    player = Player(tmp_path)
+
+    def extract(video_id, client=None):
+        raise RuntimeError("Sign in to confirm you are not a bot")
+
+    monkeypatch.setattr(player, "extract", extract)
+    with pytest.raises(RuntimeError) as error:
+        player.resolve("dQw4w9WgXcQ")
+    message = str(error.value)
+    assert "No playable stream" in message
+    assert "Sign in to confirm" in message
+
+
+def test_resolve_redacts_signed_urls(monkeypatch, tmp_path):
+    player = Player(tmp_path)
+    monkeypatch.setattr(
+        player,
+        "extract",
+        lambda video_id, client=None: ("https://host/videoplayback?sig=secret", "T"),
+    )
+    monkeypatch.setattr(player, "reachable", lambda url: False)
+    with pytest.raises(RuntimeError) as error:
+        player.resolve("dQw4w9WgXcQ")
+    assert "secret" not in str(error.value)
+
+
+def test_extract_redacts_signed_urls(monkeypatch, tmp_path):
+    player = Player(tmp_path)
+    done = subprocess.CompletedProcess(
+        args=[], returncode=1, stdout="", stderr="ERROR: 403 https://host/x?sig=secret"
+    )
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: done)
+    with pytest.raises(RuntimeError) as error:
+        player.extract("dQw4w9WgXcQ")
+    assert "secret" not in str(error.value)
+
+
 def test_enqueue_respects_hard_limit(monkeypatch):
     calls = []
     monkeypatch.setattr(
@@ -93,6 +151,27 @@ def test_queue_does_not_leak_signed_urls(monkeypatch, tmp_path):
     queue = player.queue()
     assert queue[0]["video_id"] is None
     assert "secret" not in str(queue)
+
+
+def test_status_hides_signed_url_title(monkeypatch, tmp_path):
+    player = Player(tmp_path)
+    stream = "https://host/videoplayback?sig=secret"
+    # mpv repeats the URL as media-title, cut down to its query tail.
+    values = {
+        "media-title": "webm&sparams=expire&sig=secret",
+        "playlist-pos": 0,
+        "playlist": [{"filename": stream, "title": stream}],
+    }
+    monkeypatch.setattr(player, "available", lambda: True)
+    monkeypatch.setattr(player, "get", lambda name, default=None: values.get(name))
+    player.remember("dQw4w9WgXcQ", stream, "Piano")
+
+    status = player.status()
+    assert status["title"] == "Piano"
+    assert "secret" not in str(status)
+    assert player.queue() == [
+        {"index": 0, "title": "Piano", "video_id": "dQw4w9WgXcQ", "current": False}
+    ]
 
 
 def test_clear_queue_stops_current_track(monkeypatch):
@@ -136,7 +215,8 @@ def test_startup_failure_reaps_process(monkeypatch, tmp_path):
     monkeypatch.setattr(player, "available", lambda: False)
     monkeypatch.setattr("kiosktunes_mcp.player.shutil.which", lambda _: "/usr/bin/mpv")
     monkeypatch.setattr(
-        "kiosktunes_mcp.player.subprocess.Popen", lambda *args, **kwargs: FailedProcess()
+        "kiosktunes_mcp.player.subprocess.Popen",
+        lambda *args, **kwargs: FailedProcess(),
     )
     with pytest.raises(RuntimeError, match="terminated"):
         player.ensure()
@@ -211,6 +291,7 @@ def test_play_music_defaults_to_enqueue(monkeypatch):
 def test_play_batch_tracks(monkeypatch, tmp_path):
     player = Player(tmp_path)
     monkeypatch.setattr(player, "ensure", lambda: None)
+    monkeypatch.setattr(player, "resolve", lambda vid: f"https://stream.test/{vid}")
     commands = []
     monkeypatch.setattr(player, "command", lambda *args: commands.append(args))
 
@@ -219,8 +300,8 @@ def test_play_batch_tracks(monkeypatch, tmp_path):
     assert res["count"] == 2
     assert res["enqueued"] is True
     assert commands == [
-        ("loadfile", "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "append-play"),
-        ("loadfile", "https://www.youtube.com/watch?v=pyTY6Z-Fqzw", "append-play"),
+        ("loadfile", "https://stream.test/dQw4w9WgXcQ", "append-play"),
+        ("loadfile", "https://stream.test/pyTY6Z-Fqzw", "append-play"),
     ]
 
     # Test batch replace (first replaces, subsequent append-play)
@@ -228,9 +309,9 @@ def test_play_batch_tracks(monkeypatch, tmp_path):
     res = player.play(["dQw4w9WgXcQ", "pyTY6Z-Fqzw"], enqueue=False)
     assert res["enqueued"] is False
     assert commands == [
-        ("loadfile", "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "replace"),
+        ("loadfile", "https://stream.test/dQw4w9WgXcQ", "replace"),
         ("set_property", "pause", False),
-        ("loadfile", "https://www.youtube.com/watch?v=pyTY6Z-Fqzw", "append-play"),
+        ("loadfile", "https://stream.test/pyTY6Z-Fqzw", "append-play"),
     ]
 
 
@@ -302,7 +383,12 @@ def test_rate_music_current_track(monkeypatch, tmp_path):
         server.player,
         "queue",
         lambda: [
-            {"index": 0, "video_id": "dQw4w9WgXcQ", "title": "Current Song", "current": True}
+            {
+                "index": 0,
+                "video_id": "dQw4w9WgXcQ",
+                "title": "Current Song",
+                "current": True,
+            }
         ],
     )
 
