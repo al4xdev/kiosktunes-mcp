@@ -1,6 +1,6 @@
 [project]
 name = "kiosktunes-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local TTY music control through MCP and mpv"
 readme = "README.md"
 license = "MIT"
